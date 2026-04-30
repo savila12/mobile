@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "AutoTrack",
+    "slug": "autotrack",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "autotrack",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111113"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.autotrack.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#111113"
+      },
+      "package": "com.autotrack.mobile",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow AutoTrack to attach service receipts and invoices.",
+          "cameraPermission": "Allow AutoTrack to capture service receipts and invoices."
+        }
+      ],
+      "expo-sqlite",
+      "expo-web-browser"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    }
+  }
+}

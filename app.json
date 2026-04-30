@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "bundleIdentifier": "com.savila1212.auto-maker"
+  },
+  "android": {
+    "package": "com.savila1212.automaker"
+  }
+}

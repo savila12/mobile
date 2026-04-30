@@ -1,0 +1,9 @@
+{
+    "chat.restoreLastPanelSession": true,
+    "chat.tools.terminal.autoApprove": {
+        "pnpm": true
+    },
+    "cSpell.words": [
+        "supabase"
+    ]
+}
