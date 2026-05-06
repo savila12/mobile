@@ -13,6 +13,8 @@ export const PrimaryButton = ({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({pressed}) => [
         styles.button,
         disabled ? styles.buttonDisabled : styles.buttonActive,
