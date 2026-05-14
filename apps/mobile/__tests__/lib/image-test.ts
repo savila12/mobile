@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { pickImageAsync, uploadReceipt } from '../../src/lib/image';
+import { pickImageAsync, resolveReceiptUrl, uploadReceipt } from '../../src/lib/image';
 import { supabase } from '../../src/lib/supabase';
 
 jest.mock('expo-image-picker');
@@ -60,23 +60,20 @@ describe('image utilities', () => {
     });
 
     describe('uploadReceipt', () => {
-        it('uploads receipt and returns public URL', async () => {
+        it('uploads receipt and returns storage path', async () => {
             global.fetch = jest.fn().mockResolvedValue({
                 arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
             });
 
             const mockStorage = {
                 upload: jest.fn().mockResolvedValue({ error: null }),
-                getPublicUrl: jest.fn().mockReturnValue({
-                    data: { publicUrl: 'https://example.com/image.jpg' },
-                }),
             };
 
             (supabase.storage.from as jest.Mock).mockReturnValue(mockStorage);
 
             const result = await uploadReceipt('user-123', 'file:///path/to/image.jpg');
 
-            expect(result).toBe('https://example.com/image.jpg');
+            expect(result.startsWith('user-123/')).toBe(true);
             expect(mockStorage.upload).toHaveBeenCalled();
         });
 
@@ -94,6 +91,52 @@ describe('image utilities', () => {
             await expect(uploadReceipt('user-123', 'file:///path/to/image.jpg')).rejects.toThrow(
                 'Upload failed',
             );
+        });
+    });
+
+    describe('resolveReceiptUrl', () => {
+        it('returns null for empty reference', async () => {
+            await expect(resolveReceiptUrl(null)).resolves.toBeNull();
+            await expect(resolveReceiptUrl(undefined)).resolves.toBeNull();
+        });
+
+        it('creates signed URL for stored path', async () => {
+            const mockStorage = {
+                createSignedUrl: jest.fn().mockResolvedValue({
+                    data: { signedUrl: 'https://example.com/signed.jpg' },
+                    error: null,
+                }),
+            };
+
+            (supabase.storage.from as jest.Mock).mockReturnValue(mockStorage);
+
+            const result = await resolveReceiptUrl('user-123/file.jpg');
+
+            expect(result).toBe('https://example.com/signed.jpg');
+            expect(mockStorage.createSignedUrl).toHaveBeenCalledWith('user-123/file.jpg', 3600);
+        });
+
+        it('converts legacy public URL to signed URL', async () => {
+            const mockStorage = {
+                createSignedUrl: jest.fn().mockResolvedValue({
+                    data: { signedUrl: 'https://example.com/signed.jpg' },
+                    error: null,
+                }),
+            };
+
+            (supabase.storage.from as jest.Mock).mockReturnValue(mockStorage);
+
+            const result = await resolveReceiptUrl(
+                'https://project.supabase.co/storage/v1/object/public/service-attachments/user-123/file.jpg',
+            );
+
+            expect(result).toBe('https://example.com/signed.jpg');
+            expect(mockStorage.createSignedUrl).toHaveBeenCalledWith('user-123/file.jpg', 3600);
+        });
+
+        it('passes through unknown URL references', async () => {
+            const result = await resolveReceiptUrl('https://cdn.example.com/image.jpg');
+            expect(result).toBe('https://cdn.example.com/image.jpg');
         });
     });
 });
