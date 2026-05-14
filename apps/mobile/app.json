@@ -32,6 +32,12 @@
           "cameraPermission": "Allow AutoTrack to capture service receipts and invoices."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "iosDisplayInForeground": true
+        }
+      ],
       "expo-sqlite",
       "expo-web-browser"
     ],

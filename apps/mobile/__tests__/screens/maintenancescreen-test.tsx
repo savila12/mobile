@@ -11,6 +11,7 @@ const mockPickImageAsync = jest.fn();
 const mockUploadReceipt = jest.fn();
 const mockRequestNotificationPermission = jest.fn();
 const mockScheduleMaintenanceReminder = jest.fn();
+const mockCancelMaintenanceReminder = jest.fn();
 
 jest.mock('../../src/lib/AppContext', () => ({
     useAppContext: () => mockUseAppContext(),
@@ -28,6 +29,7 @@ jest.mock('../../src/lib/image', () => ({
 jest.mock('../../src/lib/notifications', () => ({
     requestNotificationPermission: () => mockRequestNotificationPermission(),
     scheduleMaintenanceReminder: (...args: unknown[]) => mockScheduleMaintenanceReminder(...args),
+    cancelMaintenanceReminder: (...args: unknown[]) => mockCancelMaintenanceReminder(...args),
 }));
 
 describe('MaintenanceScreen', () => {
@@ -41,6 +43,7 @@ describe('MaintenanceScreen', () => {
         mockCompleteTask.mockResolvedValue(undefined);
         mockRequestNotificationPermission.mockResolvedValue(true);
         mockScheduleMaintenanceReminder.mockResolvedValue(undefined);
+        mockCancelMaintenanceReminder.mockResolvedValue(true);
         mockPickImageAsync.mockResolvedValue(null);
         mockUploadReceipt.mockResolvedValue(undefined);
         mockUseAutoTrack.mockReturnValue({
@@ -59,6 +62,7 @@ describe('MaintenanceScreen', () => {
     });
 
     it('creates a maintenance task and schedules a reminder when a due date is provided', async () => {
+        mockCreateTask.mockResolvedValue({ id: 'task-123' });
         const view = render(<MaintenanceScreen />);
         const user = userEvent.setup();
 
@@ -82,7 +86,7 @@ describe('MaintenanceScreen', () => {
 
         expect(mockRequestNotificationPermission).toHaveBeenCalled();
         expect(mockScheduleMaintenanceReminder).toHaveBeenCalledWith(
-            'Brake inspection',
+            'task-123',
             'Upcoming Service: Brake inspection',
             'Your maintenance service is coming up.',
             new Date('2026-06-01').toISOString(),
@@ -185,6 +189,7 @@ describe('MaintenanceScreen', () => {
                 photo_url: undefined,
             });
         });
+        expect(mockCancelMaintenanceReminder).toHaveBeenCalledWith('task-1');
     });
 
     it('shows alert when completeTask throws an Error instance', async () => {

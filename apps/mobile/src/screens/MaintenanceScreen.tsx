@@ -8,7 +8,11 @@ import { Screen } from '../components/Screen';
 import { useAutoTrack } from '../hooks/useAutoTrack';
 import { useAppContext } from '../lib/AppContext';
 import { pickImageAsync, uploadReceipt } from '../lib/image';
-import { requestNotificationPermission, scheduleMaintenanceReminder } from '../lib/notifications';
+import {
+  cancelMaintenanceReminder,
+  requestNotificationPermission,
+  scheduleMaintenanceReminder,
+} from '../lib/notifications';
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message) {
@@ -48,7 +52,7 @@ export const MaintenanceScreen = () => {
 
     const dueDateIso = dueDate ? new Date(dueDate).toISOString() : undefined;
 
-    await createTask({
+    const createdTask = await createTask({
       title,
       due_date: dueDateIso,
       due_odometer: dueOdometer ? Number(dueOdometer) : undefined,
@@ -59,7 +63,7 @@ export const MaintenanceScreen = () => {
       const canNotify = await requestNotificationPermission();
       if (canNotify) {
         await scheduleMaintenanceReminder(
-          title,
+          createdTask.id,
           `Upcoming Service: ${title}`,
           'Your maintenance service is coming up.',
           dueDateIso,
@@ -106,6 +110,8 @@ export const MaintenanceScreen = () => {
         notes: completeNotes,
         photo_url: photoUrl,
       });
+
+      await cancelMaintenanceReminder(task.id);
 
       setCompleteMileage('');
       setCompleteCost('');

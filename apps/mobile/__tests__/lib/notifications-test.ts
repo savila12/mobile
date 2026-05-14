@@ -1,5 +1,9 @@
 import * as Notifications from 'expo-notifications';
-import { requestNotificationPermission, scheduleMaintenanceReminder } from '../../src/lib/notifications';
+import {
+    cancelMaintenanceReminder,
+    requestNotificationPermission,
+    scheduleMaintenanceReminder,
+} from '../../src/lib/notifications';
 
 jest.mock('expo-notifications');
 
@@ -80,6 +84,40 @@ describe('notifications', () => {
             const result = await scheduleMaintenanceReminder('task-123', 'Oil Change', 'Now', now);
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('cancelMaintenanceReminder', () => {
+        it('cancels scheduled notification matching identifier', async () => {
+            (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+                {
+                    identifier: 'notification-1',
+                    content: {
+                        data: { identifier: 'task-123' },
+                    },
+                },
+            ]);
+
+            const result = await cancelMaintenanceReminder('task-123');
+
+            expect(result).toBe(true);
+            expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith('notification-1');
+        });
+
+        it('returns false when no matching identifier is found', async () => {
+            (Notifications.getAllScheduledNotificationsAsync as jest.Mock).mockResolvedValue([
+                {
+                    identifier: 'notification-1',
+                    content: {
+                        data: { identifier: 'task-other' },
+                    },
+                },
+            ]);
+
+            const result = await cancelMaintenanceReminder('task-123');
+
+            expect(result).toBe(false);
+            expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
         });
     });
 });
