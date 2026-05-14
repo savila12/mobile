@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 
@@ -7,7 +7,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useAppContext } from '../lib/AppContext';
 import { signOut } from '../lib/auth';
-import { APP_VERSION, USE_MOCK_DATA } from '../lib/devConfig';
+import { APP_VERSION, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, USE_MOCK_DATA } from '../lib/devConfig';
 import { UnitSystem } from '../types/models';
 
 const useMockData = USE_MOCK_DATA;
@@ -27,6 +27,19 @@ const Row = ({
     <Text style={styles.rowLabel}>{label}</Text>
     <View style={styles.rowValue}>{children}</View>
   </View>
+);
+
+const LinkRow = ({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity style={styles.row} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+    <Text style={styles.rowLabel}>{label}</Text>
+    <Text style={styles.linkText}>Open</Text>
+  </TouchableOpacity>
 );
 
 export const SettingsScreen = () => {
@@ -50,6 +63,19 @@ export const SettingsScreen = () => {
       await signOut();
     } catch (error: unknown) {
       Alert.alert('Sign out failed', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
+
+  const openLegalUrl = async (url: string | null, label: string) => {
+    if (!url) {
+      Alert.alert(`${label} unavailable`, 'This link is not configured yet.');
+      return;
+    }
+
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Could not open link', 'Please try again.');
     }
   };
 
@@ -96,6 +122,19 @@ export const SettingsScreen = () => {
               <Text style={styles.mockBadgeText}>Mock mode active — data is local</Text>
             </View>
           )}
+        </View>
+
+        {/* ── Legal ─────────────────────────────────────────────── */}
+        <SectionHeader title="Legal" />
+        <View style={styles.card}>
+          <LinkRow
+            label="Privacy Policy"
+            onPress={() => openLegalUrl(PRIVACY_POLICY_URL, 'Privacy Policy')}
+          />
+          <LinkRow
+            label="Terms of Service"
+            onPress={() => openLegalUrl(TERMS_OF_SERVICE_URL, 'Terms of Service')}
+          />
         </View>
 
         {/* ── Account ────────────────────────────────────────────── */}
@@ -187,6 +226,11 @@ const styles = StyleSheet.create({
   valueText: {
     color: '#a1a1aa',
     fontSize: 15,
+  },
+  linkText: {
+    color: '#0fb37f',
+    fontSize: 14,
+    fontWeight: '600',
   },
   mockBadge: {
     flexDirection: 'row',

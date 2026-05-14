@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { Linking } from 'react-native';
 import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
 
 import { SettingsScreen } from '../../src/screens/SettingsScreen';
@@ -18,11 +19,14 @@ jest.mock('../../src/lib/auth', () => ({
 jest.mock('../../src/lib/devConfig', () => ({
     APP_VERSION: '1.0.0',
     USE_MOCK_DATA: false,
+    PRIVACY_POLICY_URL: 'https://example.com/privacy',
+    TERMS_OF_SERVICE_URL: 'https://example.com/terms',
 }));
 
 describe('SettingsScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(Linking, 'openURL').mockResolvedValue();
         mockSaveProfile.mockResolvedValue(undefined);
         mockSignOut.mockResolvedValue(undefined);
         mockUseAppContext.mockReturnValue({
@@ -38,8 +42,11 @@ describe('SettingsScreen', () => {
         expect(screen.getByText('Manage your account and preferences.')).toBeOnTheScreen();
         expect(screen.getByText('Units')).toBeOnTheScreen();
         expect(screen.getByText('App')).toBeOnTheScreen();
+        expect(screen.getByText('Legal')).toBeOnTheScreen();
         expect(screen.getByText('Account')).toBeOnTheScreen();
         expect(screen.getByText('1.0.0')).toBeOnTheScreen();
+        expect(screen.getByRole('button', { name: 'Privacy Policy' })).toBeOnTheScreen();
+        expect(screen.getByRole('button', { name: 'Terms of Service' })).toBeOnTheScreen();
     });
 
     it('saves the selected unit system', async () => {
@@ -75,5 +82,35 @@ describe('SettingsScreen', () => {
         await user.press(screen.getByLabelText('Km / L per 100'));
 
         expect(alertSpy).toHaveBeenCalledWith('Error', 'Could not save unit preference. Please try again.');
+    });
+
+    it('opens privacy policy link', async () => {
+        render(<SettingsScreen />);
+        const user = userEvent.setup();
+
+        await user.press(screen.getByRole('button', { name: 'Privacy Policy' }));
+
+        expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/privacy');
+    });
+
+    it('opens terms of service link', async () => {
+        render(<SettingsScreen />);
+        const user = userEvent.setup();
+
+        await user.press(screen.getByRole('button', { name: 'Terms of Service' }));
+
+        expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/terms');
+    });
+
+    it('shows alert if opening legal link fails', async () => {
+        const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+        (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('cannot open'));
+
+        render(<SettingsScreen />);
+        const user = userEvent.setup();
+
+        await user.press(screen.getByRole('button', { name: 'Privacy Policy' }));
+
+        expect(alertSpy).toHaveBeenCalledWith('Could not open link', 'Please try again.');
     });
 });
