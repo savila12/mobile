@@ -8,10 +8,13 @@ const useMockData = USE_MOCK_DATA;
 
 WebBrowser.maybeCompleteAuthSession();
 
-const parseAuthTokens = (url: string): { access_token?: string; refresh_token?: string } => {
+const parseAuthTokens = (
+  url: string,
+): { access_token?: string; refresh_token?: string; state?: string } => {
   const parsed = Linking.parse(url).queryParams as {
     access_token?: string;
     refresh_token?: string;
+    state?: string;
   };
 
   if (parsed.access_token && parsed.refresh_token) {
@@ -26,11 +29,35 @@ const parseAuthTokens = (url: string): { access_token?: string; refresh_token?: 
   const hashParams = new URLSearchParams(url.slice(hashIndex + 1));
   const accessToken = hashParams.get('access_token') || undefined;
   const refreshToken = hashParams.get('refresh_token') || undefined;
+  const state = hashParams.get('state') || parsed.state;
 
   return {
     access_token: accessToken,
     refresh_token: refreshToken,
+    state,
   };
+};
+
+const normalizePath = (value: string | null | undefined): string => {
+  return (value || '').replace(/^\/+/, '').replace(/\/+$/, '');
+};
+
+const getExpectedState = (authUrl: string): string | undefined => {
+  try {
+    return new URL(authUrl).searchParams.get('state') || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isExpectedRedirect = (callbackUrl: string, redirectTo: string): boolean => {
+  const callbackParsed = Linking.parse(callbackUrl);
+  const redirectParsed = Linking.parse(redirectTo);
+
+  const callbackPath = normalizePath(callbackParsed.path);
+  const redirectPath = normalizePath(redirectParsed.path);
+
+  return callbackPath === redirectPath;
 };
 
 export const signInWithPassword = async (email: string, password: string) => {
@@ -69,17 +96,28 @@ export const signInWithGoogle = async () => {
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
   if (result.type === 'success' && result.url) {
+    if (!isExpectedRedirect(result.url, redirectTo)) {
+      throw new Error('Google auth callback did not match the expected redirect URL.');
+    }
+
     const tokenParams = parseAuthTokens(result.url);
+    const expectedState = getExpectedState(data.url);
 
-    if (tokenParams.access_token && tokenParams.refresh_token) {
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: tokenParams.access_token,
-        refresh_token: tokenParams.refresh_token,
-      });
+    if (expectedState && tokenParams.state !== expectedState) {
+      throw new Error('Google auth callback state mismatch.');
+    }
 
-      if (sessionError) {
-        throw sessionError;
-      }
+    if (!tokenParams.access_token || !tokenParams.refresh_token) {
+      throw new Error('Google auth callback did not include required tokens.');
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: tokenParams.access_token,
+      refresh_token: tokenParams.refresh_token,
+    });
+
+    if (sessionError) {
+      throw sessionError;
     }
   }
 };

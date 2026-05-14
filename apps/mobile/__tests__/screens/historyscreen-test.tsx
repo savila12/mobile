@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 
 import { HistoryScreen } from '../../src/screens/HistoryScreen';
 
 const mockUseAppContext = jest.fn();
 const mockUseAutoTrack = jest.fn();
+const mockResolveReceiptUrl = jest.fn();
 
 jest.mock('../../src/lib/AppContext', () => ({
     useAppContext: () => mockUseAppContext(),
@@ -13,9 +15,14 @@ jest.mock('../../src/hooks/useAutoTrack', () => ({
     useAutoTrack: (...args: unknown[]) => mockUseAutoTrack(...args),
 }));
 
+jest.mock('../../src/lib/image', () => ({
+    resolveReceiptUrl: (...args: unknown[]) => mockResolveReceiptUrl(...args),
+}));
+
 describe('HistoryScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(Linking, 'openURL').mockResolvedValue();
         mockUseAppContext.mockReturnValue({
             userId: 'user-1',
             activeVehicleId: 'vehicle-1',
@@ -59,6 +66,35 @@ describe('HistoryScreen', () => {
         expect(screen.getByText('Cost: $89.99')).toBeOnTheScreen();
         expect(screen.getByText('Changed synthetic oil')).toBeOnTheScreen();
         expect(screen.getByText('Attachment saved')).toBeOnTheScreen();
+        expect(screen.getByText('View attachment')).toBeOnTheScreen();
+    });
+
+    it('opens a signed attachment URL when user taps view attachment', async () => {
+        mockUseAutoTrack.mockReturnValue({
+            history: [
+                {
+                    id: 'history-1',
+                    event_type: 'maintenance',
+                    title: 'Oil Change',
+                    date: '2026-04-01T00:00:00.000Z',
+                    odometer: 65432,
+                    cost: 89.99,
+                    notes: 'Changed synthetic oil',
+                    photo_url: 'user-1/receipt.jpg',
+                },
+            ],
+            refresh: jest.fn(),
+        });
+        mockResolveReceiptUrl.mockResolvedValue('https://example.com/signed.jpg');
+
+        render(<HistoryScreen />);
+
+        fireEvent.press(screen.getByText('View attachment'));
+
+        await waitFor(() => {
+            expect(mockResolveReceiptUrl).toHaveBeenCalledWith('user-1/receipt.jpg');
+            expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/signed.jpg');
+        });
     });
 
     it('displays refresh indicator during refresh', () => {

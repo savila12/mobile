@@ -31,6 +31,7 @@ jest.mock('expo-linking', () => ({
     parse: jest.fn((url: string) => {
         const urlObj = new URL(url);
         return {
+            path: urlObj.pathname.replace(/^\//, ''),
             queryParams: Object.fromEntries(urlObj.searchParams),
         };
     }),
@@ -111,12 +112,12 @@ describe('auth', () => {
 
         it('handles successful OAuth login with tokens', async () => {
             mockSignInWithOAuth.mockResolvedValue({
-                data: { url: 'https://example.com/auth' },
+                data: { url: 'https://example.com/auth?state=state123' },
                 error: null,
             });
             mockOpenAuthSessionAsync.mockResolvedValue({
                 type: 'success',
-                url: 'exp://auto-maker/auth/callback?access_token=token123&refresh_token=refresh123',
+                url: 'exp://auto-maker/auth/callback?access_token=token123&refresh_token=refresh123&state=state123',
             });
             mockSetSession.mockResolvedValue({ error: null });
 
@@ -130,7 +131,7 @@ describe('auth', () => {
 
         it('dismisses browser when user cancels', async () => {
             mockSignInWithOAuth.mockResolvedValue({
-                data: { url: 'https://example.com/auth' },
+                data: { url: 'https://example.com/auth?state=state123' },
                 error: null,
             });
             mockOpenAuthSessionAsync.mockResolvedValue({ type: 'dismiss' });
@@ -142,12 +143,12 @@ describe('auth', () => {
 
         it('throws when setSession fails', async () => {
             mockSignInWithOAuth.mockResolvedValue({
-                data: { url: 'https://example.com/auth' },
+                data: { url: 'https://example.com/auth?state=state123' },
                 error: null,
             });
             mockOpenAuthSessionAsync.mockResolvedValue({
                 type: 'success',
-                url: 'exp://auto-maker/auth/callback?access_token=token123&refresh_token=refresh123',
+                url: 'exp://auto-maker/auth/callback?access_token=token123&refresh_token=refresh123&state=state123',
             });
             mockSetSession.mockResolvedValue({ error: new Error('Session failed') });
 
@@ -156,12 +157,12 @@ describe('auth', () => {
 
         it('parses tokens from hash fragment callback URL', async () => {
             mockSignInWithOAuth.mockResolvedValue({
-                data: { url: 'https://example.com/auth' },
+                data: { url: 'https://example.com/auth?state=hashstate' },
                 error: null,
             });
             mockOpenAuthSessionAsync.mockResolvedValue({
                 type: 'success',
-                url: 'exp://auto-maker/auth/callback#access_token=hash123&refresh_token=hash456',
+                url: 'exp://auto-maker/auth/callback#access_token=hash123&refresh_token=hash456&state=hashstate',
             });
             mockSetSession.mockResolvedValue({ error: null });
 
@@ -173,17 +174,51 @@ describe('auth', () => {
             });
         });
 
-        it('does not set session when callback URL has missing tokens', async () => {
+        it('throws when callback URL has missing tokens', async () => {
             mockSignInWithOAuth.mockResolvedValue({
-                data: { url: 'https://example.com/auth' },
+                data: { url: 'https://example.com/auth?state=state123' },
                 error: null,
             });
             mockOpenAuthSessionAsync.mockResolvedValue({
                 type: 'success',
-                url: 'exp://auto-maker/auth/callback?access_token=onlyAccess',
+                url: 'exp://auto-maker/auth/callback?access_token=onlyAccess&state=state123',
             });
 
-            await signInWithGoogle();
+            await expect(signInWithGoogle()).rejects.toThrow(
+                'Google auth callback did not include required tokens.',
+            );
+
+            expect(mockSetSession).not.toHaveBeenCalled();
+        });
+
+        it('throws when callback state does not match', async () => {
+            mockSignInWithOAuth.mockResolvedValue({
+                data: { url: 'https://example.com/auth?state=expected-state' },
+                error: null,
+            });
+            mockOpenAuthSessionAsync.mockResolvedValue({
+                type: 'success',
+                url: 'exp://auto-maker/auth/callback?access_token=token123&refresh_token=refresh123&state=wrong-state',
+            });
+
+            await expect(signInWithGoogle()).rejects.toThrow('Google auth callback state mismatch.');
+
+            expect(mockSetSession).not.toHaveBeenCalled();
+        });
+
+        it('throws when callback path does not match expected redirect', async () => {
+            mockSignInWithOAuth.mockResolvedValue({
+                data: { url: 'https://example.com/auth?state=expected-state' },
+                error: null,
+            });
+            mockOpenAuthSessionAsync.mockResolvedValue({
+                type: 'success',
+                url: 'exp://auto-maker/wrong/callback?access_token=token123&refresh_token=refresh123&state=expected-state',
+            });
+
+            await expect(signInWithGoogle()).rejects.toThrow(
+                'Google auth callback did not match the expected redirect URL.',
+            );
 
             expect(mockSetSession).not.toHaveBeenCalled();
         });

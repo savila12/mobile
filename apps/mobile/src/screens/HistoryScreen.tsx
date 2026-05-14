@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '../components/Screen';
 import { useAutoTrack } from '../hooks/useAutoTrack';
 import { useAppContext } from '../lib/AppContext';
+import { resolveReceiptUrl } from '../lib/image';
 
 const eventCardStyles: Record<string, { backgroundColor: string; borderColor: string }> = {
   fuel:        { backgroundColor: 'rgba(59,130,246,0.15)',  borderColor: 'rgba(59,130,246,0.3)' },
@@ -15,6 +16,7 @@ export const HistoryScreen = () => {
   const { userId, activeVehicleId } = useAppContext();
   const { history, refresh } = useAutoTrack(userId, activeVehicleId);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
 
   const onRefresh = async () => {
     try {
@@ -22,6 +24,23 @@ export const HistoryScreen = () => {
       await refresh();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const onOpenAttachment = async (entryId: string, receiptRef: string) => {
+    try {
+      setOpeningAttachmentId(entryId);
+      const signedUrl = await resolveReceiptUrl(receiptRef);
+
+      if (!signedUrl) {
+        throw new Error('Attachment URL is unavailable.');
+      }
+
+      await Linking.openURL(signedUrl);
+    } catch {
+      Alert.alert('Could not open attachment', 'Please try again.');
+    } finally {
+      setOpeningAttachmentId(null);
     }
   };
 
@@ -63,7 +82,16 @@ export const HistoryScreen = () => {
               <Text style={styles.meta}>Mileage: {entry.odometer}</Text>
               <Text style={styles.meta}>Cost: ${Number(entry.cost).toFixed(2)}</Text>
               {entry.notes ? <Text style={styles.notes}>{entry.notes}</Text> : null}
-              {entry.photo_url ? <Text style={styles.attachment}>Attachment saved</Text> : null}
+              {entry.photo_url ? (
+                <View style={styles.attachmentRow}>
+                  <Text style={styles.attachment}>Attachment saved</Text>
+                  <Pressable onPress={() => onOpenAttachment(entry.id, entry.photo_url as string)}>
+                    <Text style={styles.attachmentLink}>
+                      {openingAttachmentId === entry.id ? 'Opening...' : 'View attachment'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           );
         })}
@@ -147,5 +175,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: '#71717a',
     fontSize: 12,
+  },
+  attachmentRow: {
+    marginTop: 6,
+    rowGap: 4,
+  },
+  attachmentLink: {
+    color: '#0fb37f',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
