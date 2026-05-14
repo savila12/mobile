@@ -43,7 +43,7 @@ import { useAutoTrack } from '../../src/hooks/useAutoTrack';
 
 const USER_ID = 'mock-user-1';
 
-function createWrapper() {
+const createWrapper = () => {
     const queryClient = new QueryClient({
         defaultOptions: {
             queries: { retry: false },
@@ -54,7 +54,7 @@ function createWrapper() {
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
     return Wrapper;
-}
+};
 
 describe('useAutoTrack', () => {
     it('loads profile and vehicles for a user', async () => {

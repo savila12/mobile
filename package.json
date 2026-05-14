@@ -9,7 +9,11 @@
     "lint:mobile": "eslint apps/mobile --ext .ts,.tsx,.js,.jsx",
     "android": "pnpm --filter mobile android",
     "ios": "pnpm --filter mobile ios",
-    "start:mobile": "pnpm --filter mobile start"
+    "start:mobile": "pnpm --filter mobile start",
+    "supabase:rls:verify": "supabase db query --linked --file supabase/sql/verify_rls.sql --output table",
+    "supabase:rls:verify:local": "supabase db query --local --file supabase/sql/verify_rls.sql --output table",
+    "supabase:rls:verify:url": "supabase db query --db-url \"$SUPABASE_DB_URL\" --file supabase/sql/verify_rls.sql --output table",
+    "preflight:release": "pnpm lint && pnpm test && pnpm run supabase:rls:verify:local"
   },
   "keywords": [],
   "author": "",
