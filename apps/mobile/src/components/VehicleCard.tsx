@@ -50,6 +50,7 @@ export const VehicleCard = ({ vehicle, isActive, onSetPrimary, onEdit, onDelete,
         label={isActive ? 'Primary Vehicle' : 'Set as Primary'}
         onPress={() => onSetPrimary(vehicle.id)}
         disabled={isActive || isLoading}
+        variant="secondary"
       />
     </View>
 

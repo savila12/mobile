@@ -183,6 +183,7 @@ export const MaintenanceScreen = () => {
           <PrimaryButton
             label={receiptUri ? 'Receipt Attached ✓' : 'Attach Receipt (Optional)'}
             onPress={onAttachReceipt}
+            variant="secondary"
           />
         </View>
       ) : null}
@@ -212,6 +213,7 @@ export const MaintenanceScreen = () => {
         <PrimaryButton
           label={showAddForm ? 'Hide Form' : 'Add Task'}
           onPress={() => setShowAddForm((prev) => !prev)}
+          variant="secondary"
         />
       </View>
     </Screen>
